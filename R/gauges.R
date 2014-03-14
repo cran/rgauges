@@ -4,17 +4,21 @@
 #' @template all
 #' @importFrom plyr rbind.fill
 #' @param page Page to return.
+#' @param key API key. If left NULL, function looks for key in your options settings
+#' defined in the keyname parameter
 #' @param keyname Your API key name in your .Rprofile file
+#' @param callopts Curl debugging options passed in to httr::GET
 #' @examples \dontrun{
 #' gs_gauge_list()
 #' }
 #' @export
-gs_gauge_list <- function(keyname='GaugesKey', page=NULL)
+gs_gauge_list <- function(key=NULL, keyname='GaugesKey', page=NULL, callopts=list())
 {
-  key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
+  if(is.null(key))
+    key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
   url <- 'https://secure.gaug.es/gauges'
   args <- compact(list(page=page))
-  tt <- GET(url=url, query=args, config=list(httpheader=paste0('X-Gauges-Token:',key)))
+  tt <- GET(url=url, query=args, config=c(add_headers('X-Gauges-Token' = key), callopts))
   stop_for_status(tt)
   out <- content(tt)
   brief <- do.call(rbind.fill, lapply(out$gauges, function(x) data.frame(x[c('id','title')],stringsAsFactors=FALSE)))
@@ -25,6 +29,8 @@ gs_gauge_list <- function(keyname='GaugesKey', page=NULL)
 #' 
 #' @template all
 #' @param id id of the gauge
+#' @param key API key. If left NULL, function looks for key in your options settings
+#' defined in the keyname parameter
 #' @param keyname Your API key name in your .Rprofile file
 #' @examples \dontrun{
 #' # create a dummy gauge
@@ -34,17 +40,21 @@ gs_gauge_list <- function(keyname='GaugesKey', page=NULL)
 #' gs_gauge_delete(out$id)
 #' }
 #' @export
-gs_gauge_delete <-  function(id, keyname='GaugesKey'){
-  key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
+gs_gauge_delete <-  function(id, key=NULL, keyname='GaugesKey'){
+  if(is.null(key))
+    key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
   url <- sprintf('https://secure.gaug.es/gauges/%s', id)
-  message(http_status(DELETE(url, token))$message)
+  message(http_status(DELETE(url, add_headers("X-Gauges-Token" = key)))$message)
 }
 
 #' Gets details for a gauge.
 #' 
 #' @template all
 #' @param id id of the gauge
+#' @param key API key. If left NULL, function looks for key in your options settings
+#' defined in the keyname parameter
 #' @param keyname Your API key name in your .Rprofile file
+#' @param callopts Curl debugging options passed in to httr::GET
 #' @details Gets details on a gauge, by specifying the id of the gauge. 
 #' @examples \dontrun{
 #' # create a dummy gauge
@@ -54,10 +64,11 @@ gs_gauge_delete <-  function(id, keyname='GaugesKey'){
 #' gs_gauge_detail(out$id)
 #' }
 #' @export
-gs_gauge_detail <- function(id, keyname='GaugesKey'){
-  key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
+gs_gauge_detail <- function(id, key=NULL, keyname='GaugesKey', callopts=list()){
+  if(is.null(key))
+    key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
   url <- sprintf('https://secure.gaug.es/gauges/%s', id)
-  tt <- GET(url, config=list(httpheader=paste0('X-Gauges-Token:',key)))
+  tt <- GET(url, config=c(add_headers('X-Gauges-Token' = key), callopts))
   stop_for_status(tt)
   out <- content(tt)
   parse_gauge_detail(out)
@@ -95,6 +106,8 @@ parse_gauge_detail <- function(out)
 #' @param tz The time zone that should be used for all date/time operations. See here 
 #'    \url{http://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html} for reference. 
 #' @param allowed_hosts Comma or space separated list of domains to accept tracking data from. 
+#' @param key API key. If left NULL, function looks for key in your options settings
+#' defined in the keyname parameter
 #' @param keyname Your API key name in your .Rprofile file
 #' @param verbose Print http status (default) or not
 #' @details Note that you can create gaguges with the same names, beware. 
@@ -104,11 +117,12 @@ parse_gauge_detail <- function(out)
 #' }
 #' @export
 gs_gauge_create <- function(title = 'hello_world2', tz = 'Eastern Time (US & Canada)', 
-                            allowed_hosts = NULL, keyname='GaugesKey', verbose=TRUE)
+  allowed_hosts = NULL, key=NULL, keyname='GaugesKey', verbose=TRUE)
 {  
-  token <- add_headers("X-Gauges-Token" = key)
+  if(is.null(key))
+    key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
   body <- compact(list(title = title, tz = tz, allowed_hosts = allowed_hosts))
-  tt <- POST("https://secure.gaug.es/gauges", token, body = body)
+  tt <- POST("https://secure.gaug.es/gauges", add_headers("X-Gauges-Token" = key), body = body)
   stop_for_status(tt)
   status <- http_status(tt)$message
   if(verbose) message(status)
@@ -127,6 +141,8 @@ gs_gauge_create <- function(title = 'hello_world2', tz = 'Eastern Time (US & Can
 #' @param tz The time zone that should be used for all date/time operations. See here 
 #'    \url{http://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html} for reference. 
 #' @param allowed_hosts Comma or space separated list of domains to accept tracking data from. 
+#' @param key API key. If left NULL, function looks for key in your options settings
+#' defined in the keyname parameter
 #' @param keyname Your API key name in your .Rprofile file
 #' @param verbose Print http status (default) or not
 #' @details Note that you can create gaguges with the same names, beware. 
@@ -137,10 +153,13 @@ gs_gauge_create <- function(title = 'hello_world2', tz = 'Eastern Time (US & Can
 #' }
 #' @export
 gs_gauge_update <- function(id = NULL, tz = 'Eastern Time (US & Canada)', 
-  title = 'foo_bar', allowed_hosts = NULL, keyname='GaugesKey', verbose=TRUE)
+  title = 'foo_bar', allowed_hosts = NULL, key=NULL, keyname='GaugesKey', verbose=TRUE)
 {  
   if(is.null(id))
     stop('You must provide a gauge id')
+  
+  if(is.null(key))
+    key <- getOption(keyname, stop("you need an API key for Gaug.es data"))
   
   token <- add_headers("X-Gauges-Token" = key)
   body <- compact(list(title = title, tz = tz, allowed_hosts = allowed_hosts))
